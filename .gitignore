@@ -1,0 +1,19 @@
+# Eclipse / Java
+.classpath
+.project
+.settings/
+bin/
+target/
+build/
+
+# Logs
+*.log
+
+# H2 database files
+*.mv.db
+*.trace.db
+*.lock.db
+
+# OS
+.DS_Store
+Thumbs.db
