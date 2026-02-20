@@ -33,7 +33,7 @@
 <h3>一覧</h3>
 <table border="1">
 <tr>
-  <th>日付</th><th>科目</th><th>分</th><th>メモ</th><th>操作</th>
+  <th>日付</th><th>科目</th><th>分</th><th>メモ</th><th>削除</th><th>編集</th>
 </tr>
 
 <%
@@ -49,10 +49,11 @@ if (list != null) {
 
 <td>
 <a href="<%= request.getContextPath() %>/StudyLogServlet?action=delete&id=<%= log.getId() %>"
-onclick="return confirm('削除しますか？');">
-削除
-</a>
+onclick="return confirm('削除しますか？');">削除</a>
 </td>
+ <td>
+    <a href="<%= request.getContextPath() %>/EditStudyLogServlet?id=<%= log.getId() %>">編集</a>
+  </td>
 
 </tr>
 

@@ -23,6 +23,15 @@ public class StudyLogDAO {
             throw new RuntimeException(e);
         }
     }
+    
+    
+    
+    //DB接続を取得するメソッド
+    private Connection getConnection()
+    throws SQLException{
+    	return 
+    DriverManager.getConnection(JDBC_URL,DB_USER,DB_PASS);
+    }
 
     // 一覧（新しい順）
     public List<StudyLog> findByUser(String userId) {
@@ -107,6 +116,53 @@ public class StudyLogDAO {
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+    public StudyLog findByIdAndUser(int id, String userId) {
+        String sql = "SELECT id, user_id, study_date, subject, minutes, memo " +
+                     "FROM study_logs WHERE id=? AND user_id=?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ps.setString(2, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    StudyLog log = new StudyLog();
+                    log.setId(rs.getInt("id"));
+                    log.setUserId(rs.getString("user_id"));
+                    log.setStudyDate(rs.getString("study_date"));
+                    log.setSubject(rs.getString("subject"));
+                    log.setMinutes(rs.getInt("minutes"));
+                    log.setMemo(rs.getString("memo"));
+                    return log;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public void update(StudyLog log) {
+        String sql = "UPDATE study_logs SET study_date=?, subject=?, minutes=?, memo=? " +
+                     "WHERE id=? AND user_id=?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, log.getStudyDate());
+            ps.setString(2, log.getSubject());
+            ps.setInt(3, log.getMinutes());
+            ps.setString(4, log.getMemo());
+            ps.setInt(5, log.getId());
+            ps.setString(6, log.getUserId());
+
+            ps.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
