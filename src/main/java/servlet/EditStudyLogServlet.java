@@ -122,7 +122,12 @@ public class EditStudyLogServlet extends HttpServlet {
 
         StudyLogDAO dao = new StudyLogDAO();
         dao.update(log);
+     // ★フラッシュメッセージ
+        if (session != null) {
+            session.setAttribute("flash", "更新しました");
+        }
 
+        
         response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
     }
 }

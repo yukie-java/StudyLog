@@ -23,34 +23,43 @@ public class StudyLogServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
     	
-    	String action = request.getParameter("action");
-
-    	if ("delete".equals(action)) {
-    	    int id = Integer.parseInt(request.getParameter("id"));
-
-    	    HttpSession session = request.getSession(false);
-    	    User loginUser = (User) session.getAttribute("loginUser");
-
-    	    StudyLogDAO dao = new StudyLogDAO();
-    	    dao.delete(id, loginUser.getName());
-
-    	    response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
-    	    return;
-    	}
-
-        
-    	response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-    	response.setHeader("Pragma", "no-cache");
-    	response.setDateHeader("Expires", 0);
-
-    	
-    	
-        // ログインチェック
+    	// ログインチェック
         HttpSession session = request.getSession(false);
         User loginUser = (session == null) ? null : (User) session.getAttribute("loginUser");
         if (loginUser == null) {
             response.sendRedirect(request.getContextPath() + "/LoginServlet");
             return;
+        }
+    	
+    	String action = request.getParameter("action");
+
+    	if ("delete".equals(action)) {
+    	    int id = Integer.parseInt(request.getParameter("id"));
+
+    	    StudyLogDAO dao = new StudyLogDAO();
+    	    dao.delete(id, loginUser.getName());
+    	    
+    	    
+    	    HttpSession s = request.getSession(true);
+    	        s.setAttribute("flash", "削除しました");
+    	    
+    	    
+    	    response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
+    	    return;
+    	}
+    	
+    	      
+    	response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    	response.setHeader("Pragma", "no-cache");
+    	response.setDateHeader("Expires", 0);
+ 
+        
+        if (session != null) {
+            String flash = (String) session.getAttribute("flash");
+            if (flash != null) {
+                session.removeAttribute("flash"); // ★一回表示したら消す
+                request.setAttribute("flash", flash);
+            }
         }
 
         String userId = loginUser.getName(); // ← study_logs.user_id(VARCHAR) なので NAME を使う
@@ -112,6 +121,9 @@ public class StudyLogServlet extends HttpServlet {
 
         StudyLogDAO dao = new StudyLogDAO();
         dao.insert(log);
+        
+        HttpSession s = request.getSession(true);
+        s.setAttribute("flash", "登録しました");
 
         // PRG
         response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
