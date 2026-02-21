@@ -2,25 +2,79 @@
 
 ## 概要
 学習時間を記録・管理できるWebアプリです。  
-ログイン後、自分の学習ログを登録・編集・削除できます。
+ログイン後、自分の学習ログ（科目・学習時間・メモ）を登録・編集・削除できます。  
+Java（Servlet/JSP）とH2 Databaseを使用したポートフォリオ用プロジェクトです。
+
+---
 
 ## 使用技術
 - Java
 - Servlet / JSP
+- JDBC
 - H2 Database
 - Apache Tomcat
+- Eclipse
+- Git / GitHub
+
+---
 
 ## 主な機能
 - ログイン / ログアウト
 - 学習ログ登録
-- 一覧表示
+- 一覧表示（ユーザー別）
 - 編集
-- 削除
-- フラッシュメッセージ表示
+- 削除（確認ダイアログあり）
+- フラッシュメッセージ表示  
+  （登録しました / 更新しました / 削除しました）
+- 検索機能  
+  - 日付範囲（from〜to）
+  - 科目（部分一致）
+
+---
+
+## DBテーブル（study_logs）
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | 主キー |
+| user_id | VARCHAR | ユーザーID |
+| study_date | VARCHAR / DATE | 学習日 |
+| subject | VARCHAR | 科目 |
+| minutes | INTEGER | 学習時間（分） |
+| memo | VARCHAR | メモ |
+| created_at | TIMESTAMP | 作成日時 |
+| updated_at | TIMESTAMP | 更新日時 |
+
+---
 
 ## 画面
-（スクショ入れるならここ）
+
+- login.jsp（ログイン画面）
+- studylog.jsp（一覧＋登録＋検索）
+- edit.jsp（編集画面）
+
+（スクリーンショットをここに追加予定）
+
+---
 
 ## 起動方法
-1. Tomcatにデプロイ
-2. `/StudyLog/LoginServlet` にアクセス
+
+1. EclipseでプロジェクトをTomcatにデプロイ
+2. ブラウザで以下へアクセス  
+ http://localhost:8080/StudyLog/LoginServlet
+ 
+
+---
+
+## 今後の改善予定
+
+- 科目プルダウン化
+- UI改善（CSS整理）
+- REST API化（Androidアプリから利用）
+
+---
+
+## 作者
+
+ポートフォリオ用に作成した学習記録アプリです。
+ 

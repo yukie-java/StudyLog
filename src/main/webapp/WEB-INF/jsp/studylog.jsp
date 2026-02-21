@@ -53,11 +53,33 @@ request.getAttribute("flash");
 if(flash != null){
 %>
  <div class="flash"><%= flash %></div>
- 
- 
 <%
 }
 %>
+
+<h3>検索</h3>
+
+<form action="<%= request.getContextPath() %>/StudyLogServlet" method="get">
+
+  期間:
+  <input type="date" name="from"
+   value="<%= request.getAttribute("from")==null?"":request.getAttribute("from") %>">
+
+  〜
+
+  <input type="date" name="to"
+   value="<%= request.getAttribute("to")==null?"":request.getAttribute("to") %>">
+
+  科目:
+  <input type="text" name="subject"
+   value="<%= request.getAttribute("subject")==null?"":request.getAttribute("subject") %>"
+   placeholder="部分一致">
+
+  <input type="submit" value="検索">
+
+  <a href="<%= request.getContextPath() %>/StudyLogServlet">リセット</a>
+
+</form>
 
 <h3>一覧</h3>
 

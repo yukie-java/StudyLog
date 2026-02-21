@@ -66,7 +66,27 @@ public class StudyLogServlet extends HttpServlet {
         String today = LocalDate.now().toString();
 
         StudyLogDAO dao = new StudyLogDAO();
-        List<StudyLog> list = dao.findByUser(userId);
+
+        String from = request.getParameter("from");
+        String to = request.getParameter("to");
+        String subject = request.getParameter("subject");
+
+        List<StudyLog> list;
+
+        if ((from != null && !from.isEmpty())
+         || (to != null && !to.isEmpty())
+         || (subject != null && !subject.isEmpty())) {
+
+            list = dao.findByCondition(userId, from, to, subject);
+
+            request.setAttribute("from", from);
+            request.setAttribute("to", to);
+            request.setAttribute("subject", subject);
+
+        } else {
+            list = dao.findByUser(userId);
+        }
+
         int totalToday = dao.sumByDate(userId, today);
 
         request.setAttribute("logList", list);

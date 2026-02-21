@@ -62,6 +62,62 @@ public class StudyLogDAO {
 
         return list;
     }
+    
+    public List<StudyLog> findByCondition(String userId, String from, String to, String subject) {
+
+        List<StudyLog> list = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder(
+            "SELECT * FROM study_logs WHERE user_id=?"
+        );
+
+        List<Object> params = new ArrayList<>();
+        params.add(userId);
+
+        if (from != null && !from.isEmpty()) {
+            sql.append(" AND study_date >= ?");
+            params.add(from);
+        }
+
+        if (to != null && !to.isEmpty()) {
+            sql.append(" AND study_date <= ?");
+            params.add(to);
+        }
+
+        if (subject != null && !subject.isEmpty()) {
+            sql.append(" AND subject LIKE ?");
+            params.add("%" + subject + "%");
+        }
+
+        sql.append(" ORDER BY study_date DESC");
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                StudyLog log = new StudyLog();
+                log.setId(rs.getInt("id"));
+                log.setUserId(rs.getString("user_id"));
+                log.setStudyDate(rs.getString("study_date"));
+                log.setSubject(rs.getString("subject"));
+                log.setMinutes(rs.getInt("minutes"));
+                log.setMemo(rs.getString("memo"));
+                list.add(log);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+    
 
     // 登録
     public void insert(StudyLog log) {
