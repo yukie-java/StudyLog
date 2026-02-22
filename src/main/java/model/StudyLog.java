@@ -7,16 +7,21 @@ public class StudyLog {
     private String subject;
     private int minutes;
     private String memo;
+    private String subjectType;
 
     public StudyLog() {}
 
-    public StudyLog(String userId, String studyDate, String subject, int minutes, String memo) {
+    public StudyLog(String userId, String studyDate, String subjectType, String subject, int minutes, String memo) {
         this.userId = userId;
         this.studyDate = studyDate;
+        this.subjectType = subjectType;
         this.subject = subject;
         this.minutes = minutes;
         this.memo = memo;
     }
+        
+        
+    
 
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
@@ -35,4 +40,7 @@ public class StudyLog {
 
     public String getMemo() { return memo; }
     public void setMemo(String memo) { this.memo = memo; }
+    
+    public String getSubjectType() { return subjectType; }
+    public void setSubjectType(String subjectType) { this.subjectType = subjectType; }
 }

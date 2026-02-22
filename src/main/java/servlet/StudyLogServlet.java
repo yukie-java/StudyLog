@@ -3,6 +3,7 @@ package servlet;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
@@ -22,57 +23,58 @@ public class StudyLogServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-    	
-    	// ログインチェック
+
+        // ログインチェック
         HttpSession session = request.getSession(false);
         User loginUser = (session == null) ? null : (User) session.getAttribute("loginUser");
         if (loginUser == null) {
             response.sendRedirect(request.getContextPath() + "/LoginServlet");
             return;
         }
-    	
-    	String action = request.getParameter("action");
 
-    	if ("delete".equals(action)) {
-    	    int id = Integer.parseInt(request.getParameter("id"));
+        // ★LoginServletで保存したloginTypeを読む（ID判定はしない）
+        String loginType = (String) session.getAttribute("loginType");
+        request.setAttribute("loginType", loginType);
 
-    	    StudyLogDAO dao = new StudyLogDAO();
-    	    dao.delete(id, loginUser.getName());
-    	    
-    	    
-    	    HttpSession s = request.getSession(true);
-    	        s.setAttribute("flash", "削除しました");
-    	    
-    	    
-    	    response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
-    	    return;
-    	}
-    	
-    	      
-    	response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-    	response.setHeader("Pragma", "no-cache");
-    	response.setDateHeader("Expires", 0);
- 
-        
-        if (session != null) {
-            String flash = (String) session.getAttribute("flash");
-            if (flash != null) {
-                session.removeAttribute("flash"); // ★一回表示したら消す
-                request.setAttribute("flash", flash);
-            }
+        String action = request.getParameter("action");
+        if ("delete".equals(action)) {
+            int id = Integer.parseInt(request.getParameter("id"));
+
+            StudyLogDAO dao = new StudyLogDAO();
+            dao.delete(id, loginUser.getName());
+
+            HttpSession s = request.getSession(true);
+            s.setAttribute("flash", "削除しました");
+
+            response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
+            return;
         }
 
-        String userId = loginUser.getName(); // ← study_logs.user_id(VARCHAR) なので NAME を使う
+        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        response.setHeader("Pragma", "no-cache");
+        response.setDateHeader("Expires", 0);
+
+        String flash = (session == null) ? null : (String) session.getAttribute("flash");
+        if (flash != null) {
+            session.removeAttribute("flash");
+            request.setAttribute("flash", flash);
+        }
+
+        String userId = loginUser.getName();
         String today = LocalDate.now().toString();
 
+        // ★doGetでもdaoを作る（必須）
         StudyLogDAO dao = new StudyLogDAO();
+
+        // ★履歴候補（JSPで使うなら必須）
+        List<String> subjects = dao.findSubjectsByUser(userId);
+        request.setAttribute("subjects", subjects);
 
         String from = request.getParameter("from");
         String to = request.getParameter("to");
         String subject = request.getParameter("subject");
 
         List<StudyLog> list;
-
         if ((from != null && !from.isEmpty())
          || (to != null && !to.isEmpty())
          || (subject != null && !subject.isEmpty())) {
@@ -88,6 +90,9 @@ public class StudyLogServlet extends HttpServlet {
         }
 
         int totalToday = dao.sumByDate(userId, today);
+
+        Map<String, Map<String,Integer>> subjectTotals = dao.sumBySubject(userId);
+        request.setAttribute("subjectTotals", subjectTotals);
 
         request.setAttribute("logList", list);
         request.setAttribute("totalToday", totalToday);
@@ -118,13 +123,27 @@ public class StudyLogServlet extends HttpServlet {
         String subject = request.getParameter("subject");
         String minutesStr = request.getParameter("minutes");
         String memo = request.getParameter("memo");
+        String subjectType = request.getParameter("subjectType");
+        
+     // ★保険：subjectTypeが来ない時は loginType で補完（NULL防止）
+        String loginType = (String) session.getAttribute("loginType");
 
-        // ざっくり最低限のチェック（必要なら強化）
+        // childログインなら強制child（adultへ切替させない）
+        if ("child".equals(loginType)) {
+            subjectType = "child";
+        }
+
+        // adultログインで subjectType が空なら adult にする
+        if (subjectType == null || subjectType.isBlank()) {
+            subjectType = "adult";
+        }
+
+        
         if (studyDate == null || studyDate.isBlank()
                 || subject == null || subject.isBlank()
                 || minutesStr == null || minutesStr.isBlank()) {
 
-            // エラー表示したいなら、ここで doGet 相当を呼ぶ or エラーメッセージ付きforward
+            
             response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
             return;
         }
@@ -137,8 +156,7 @@ public class StudyLogServlet extends HttpServlet {
             return;
         }
 
-        StudyLog log = new StudyLog(userId, studyDate, subject, minutes, memo);
-
+        StudyLog log = new StudyLog(userId, studyDate, subjectType, subject, minutes, memo);
         StudyLogDAO dao = new StudyLogDAO();
         dao.insert(log);
         

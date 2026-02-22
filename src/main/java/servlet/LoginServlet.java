@@ -58,7 +58,14 @@ public class LoginServlet extends HttpServlet {
         HttpSession session = request.getSession();
         session.setAttribute("loginUser", user);
 
-        // StudyLogへ
+        String loginType;
+        if ("a".equals(user.getName())) {
+            loginType = "child";
+        } else {
+            loginType = "adult"; // y含め、それ以外は全部adult扱い
+        }
+        session.setAttribute("loginType", loginType);
+
         response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
     }
 }

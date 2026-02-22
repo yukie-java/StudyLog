@@ -6,7 +6,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import model.StudyLog;
 
@@ -118,20 +120,84 @@ public class StudyLogDAO {
         return list;
     }
     
+    
+    public List<String> findSubjectsByUser(String userId, String subjectType) {
+
+        List<String> list = new ArrayList<>();
+
+        String sql =
+          "SELECT DISTINCT subject FROM study_logs " +
+          "WHERE user_id=? AND subject_type=? " +
+          "ORDER BY subject";
+
+        try(Connection conn = getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.setString(2, subjectType);
+
+            ResultSet rs = ps.executeQuery();
+            while(rs.next()){
+                list.add(rs.getString("subject"));
+            }
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+        return list;
+    }
+    
+ // 科目別集計（child/adult別）
+    public Map<String, Map<String, Integer>> sumBySubject(String userId) {
+
+        Map<String, Map<String, Integer>> result = new LinkedHashMap<>();
+        result.put("child", new LinkedHashMap<>());
+        result.put("adult", new LinkedHashMap<>());
+
+        String sql =
+            "SELECT subject_type, subject, SUM(minutes) AS total " +
+            "FROM study_logs " +
+            "WHERE user_id=? " +
+            "GROUP BY subject_type, subject " +
+            "ORDER BY subject_type, total DESC";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String type = rs.getString("subject_type"); // child / adult
+                    String subject = rs.getString("subject");
+                    int total = rs.getInt("total");
+
+                    if (!result.containsKey(type)) {
+                        result.put(type, new LinkedHashMap<>());
+                    }
+                    result.get(type).put(subject, total);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
 
     // 登録
     public void insert(StudyLog log) {
-        String sql = "INSERT INTO study_logs(user_id, study_date, subject, minutes, memo, created_at, updated_at) "
-                   + "VALUES(?,?,?,?,?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+        String sql = "INSERT INTO study_logs(user_id, study_date, subject, subject_type, minutes, memo, created_at, updated_at) "
+                   + "VALUES(?,?,?,?,?,?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
 
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, log.getUserId());
-            ps.setString(2, log.getStudyDate());
-            ps.setString(3, log.getSubject());
-            ps.setInt(4, log.getMinutes());
-            ps.setString(5, log.getMemo());
+        	ps.setString(1, log.getUserId());
+        	ps.setString(2, log.getStudyDate());
+        	ps.setString(3, log.getSubject());
+        	ps.setString(4, log.getSubjectType());   // ★追加
+        	ps.setInt(5, log.getMinutes());
+        	ps.setString(6, log.getMemo());
 
             ps.executeUpdate();
 
@@ -222,4 +288,29 @@ public class StudyLogDAO {
         }
     }
 
+    
+    public List<String> findSubjectsByUser(String userId) {
+
+        List<String> list = new ArrayList<>();
+
+        String sql =
+            "SELECT DISTINCT subject FROM study_logs WHERE user_id=? ORDER BY subject";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(rs.getString("subject"));
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
 }
