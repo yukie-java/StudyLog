@@ -183,6 +183,91 @@ public class StudyLogDAO {
 
         return result;
     }
+    
+ 
+
+    
+    
+ // 累計（ユーザー × subject_type）
+    public int sumTotal(String userId, String subjectType) {
+
+        String sql = "SELECT COALESCE(SUM(minutes),0) AS total " +
+                     "FROM study_logs WHERE user_id=? AND subject_type=?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.setString(2, subjectType);
+
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("total");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+
+    // 月合計（yyyy-MM）
+    public int sumMonth(String userId, String subjectType, String yearMonth) {
+
+        String sql =
+            "SELECT COALESCE(SUM(minutes),0) AS total " +
+            "FROM study_logs " +
+            "WHERE user_id=? AND subject_type=? " +
+            "AND FORMATDATETIME(PARSEDATETIME(study_date,'yyyy-MM-dd'),'yyyy-MM') = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.setString(2, subjectType);
+            ps.setString(3, yearMonth);
+
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("total");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+
+    // 週合計（月曜〜日曜）：指定日(anyDate)を含む週
+    public int sumWeek(String userId, String subjectType, String anyDate) {
+
+        String sql =
+            "SELECT COALESCE(SUM(minutes),0) AS total " +
+            "FROM study_logs " +
+            "WHERE user_id=? AND subject_type=? " +
+            "AND PARSEDATETIME(study_date,'yyyy-MM-dd') BETWEEN " +
+            "  DATEADD('DAY', 1 - DAY_OF_WEEK(PARSEDATETIME(?, 'yyyy-MM-dd')), PARSEDATETIME(?, 'yyyy-MM-dd')) " +
+            "  AND " +
+            "  DATEADD('DAY', 7 - DAY_OF_WEEK(PARSEDATETIME(?, 'yyyy-MM-dd')), PARSEDATETIME(?, 'yyyy-MM-dd'))";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.setString(2, subjectType);
+
+            // anyDateを4回使ってる
+            ps.setString(3, anyDate);
+            ps.setString(4, anyDate);
+            ps.setString(5, anyDate);
+            ps.setString(6, anyDate);
+
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("total");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 
     // 登録
     public void insert(StudyLog log) {
@@ -313,4 +398,86 @@ public class StudyLogDAO {
 
         return list;
     }
+    public List<StudyLog> findByUserAndType(String userId, String subjectType) {
+        List<StudyLog> list = new ArrayList<>();
+
+        String sql = "SELECT * FROM study_logs WHERE user_id=? AND subject_type=? " +
+                     "ORDER BY study_date DESC, id DESC";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.setString(2, subjectType);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                StudyLog log = new StudyLog();
+                log.setId(rs.getInt("id"));
+                log.setUserId(rs.getString("user_id"));
+                log.setStudyDate(rs.getString("study_date"));
+                log.setSubject(rs.getString("subject"));
+                log.setMinutes(rs.getInt("minutes"));
+                log.setMemo(rs.getString("memo"));
+                list.add(log);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    
+    public List<StudyLog> findByConditionAndType(String userId, String subjectType,
+            String from, String to, String subject) {
+
+         List<StudyLog> list = new ArrayList<>();
+
+         StringBuilder sql = new StringBuilder("SELECT * FROM study_logs WHERE user_id=? AND subject_type=?");
+
+         List<Object> params = new ArrayList<>();
+             params.add(userId);
+             params.add(subjectType);
+
+         if (from != null && !from.isEmpty()) {
+            sql.append(" AND study_date >= ?");
+            params.add(from);
+          }
+         if (to != null && !to.isEmpty()) {
+             sql.append(" AND study_date <= ?");
+             params.add(to);
+             }
+         if (subject != null && !subject.isEmpty()) {
+             sql.append(" AND subject LIKE ?");
+             params.add("%" + subject + "%");
+             }
+
+         sql.append(" ORDER BY study_date DESC, id DESC");
+
+         try (Connection conn = getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+             for (int i = 0; i < params.size(); i++) {
+                 ps.setObject(i + 1, params.get(i));
+                 }
+
+             ResultSet rs = ps.executeQuery();
+             while (rs.next()) {
+                 StudyLog log = new StudyLog();
+                 log.setId(rs.getInt("id"));
+                 log.setUserId(rs.getString("user_id"));
+                 log.setStudyDate(rs.getString("study_date"));
+                 log.setSubject(rs.getString("subject"));
+                 log.setMinutes(rs.getInt("minutes"));
+                 log.setMemo(rs.getString("memo"));
+                 list.add(log);
+                 }
+
+             } catch (Exception e) {
+                 e.printStackTrace();
+                 }
+         return list;
+         }
+    
+    
+    
 }

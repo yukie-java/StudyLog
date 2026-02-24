@@ -2,6 +2,7 @@ package servlet;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -20,89 +21,116 @@ import model.User;
 @WebServlet("/StudyLogServlet")
 public class StudyLogServlet extends HttpServlet {
 
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+	        throws ServletException, IOException {
 
-        // ログインチェック
-        HttpSession session = request.getSession(false);
-        User loginUser = (session == null) ? null : (User) session.getAttribute("loginUser");
-        if (loginUser == null) {
-            response.sendRedirect(request.getContextPath() + "/LoginServlet");
-            return;
-        }
+	    // ログインチェック
+	    HttpSession session = request.getSession(false);
+	    User loginUser = (session == null) ? null : (User) session.getAttribute("loginUser");
+	    if (loginUser == null) {
+	        response.sendRedirect(request.getContextPath() + "/LoginServlet");
+	        return;
+	    }
 
-        // ★LoginServletで保存したloginTypeを読む（ID判定はしない）
-        String loginType = (String) session.getAttribute("loginType");
-        request.setAttribute("loginType", loginType);
+	    // loginType（セッションから）
+	    String loginType = (String) session.getAttribute("loginType");
+	    request.setAttribute("loginType", loginType);
 
-        String action = request.getParameter("action");
-        if ("delete".equals(action)) {
-            int id = Integer.parseInt(request.getParameter("id"));
+	    // 削除
+	    String action = request.getParameter("action");
+	    if ("delete".equals(action)) {
+	        int id = Integer.parseInt(request.getParameter("id"));
 
-            StudyLogDAO dao = new StudyLogDAO();
-            dao.delete(id, loginUser.getName());
+	        StudyLogDAO dao = new StudyLogDAO();
+	        dao.delete(id, loginUser.getName());
 
-            HttpSession s = request.getSession(true);
-            s.setAttribute("flash", "削除しました");
+	        HttpSession s = request.getSession(true);
+	        s.setAttribute("flash", "削除しました");
 
-            response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
-            return;
-        }
+	        response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
+	        return;
+	    }
 
-        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-        response.setHeader("Pragma", "no-cache");
-        response.setDateHeader("Expires", 0);
+	    // キャッシュ無効
+	    response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+	    response.setHeader("Pragma", "no-cache");
+	    response.setDateHeader("Expires", 0);
 
-        String flash = (session == null) ? null : (String) session.getAttribute("flash");
-        if (flash != null) {
-            session.removeAttribute("flash");
-            request.setAttribute("flash", flash);
-        }
+	    // フラッシュ
+	    String flash = (String) session.getAttribute("flash");
+	    if (flash != null) {
+	        session.removeAttribute("flash");
+	        request.setAttribute("flash", flash);
+	    }
 
-        String userId = loginUser.getName();
-        String today = LocalDate.now().toString();
+	    String userId = loginUser.getName();
+	    String today = LocalDate.now().toString();
 
-        // ★doGetでもdaoを作る（必須）
-        StudyLogDAO dao = new StudyLogDAO();
+	    StudyLogDAO dao = new StudyLogDAO();
 
-        // ★履歴候補（JSPで使うなら必須）
-        List<String> subjects = dao.findSubjectsByUser(userId);
-        request.setAttribute("subjects", subjects);
+	    // ★履歴候補：今は「全subject」でOK（adult入力の候補用途）
+	    List<String> subjects = dao.findSubjectsByUser(userId);
+	    request.setAttribute("subjects", subjects);
 
-        String from = request.getParameter("from");
-        String to = request.getParameter("to");
-        String subject = request.getParameter("subject");
+	 // ===== 表示中のsubjectTypeを先に決める =====
+	    String subjectType = request.getParameter("subjectType");
 
-        List<StudyLog> list;
-        if ((from != null && !from.isEmpty())
-         || (to != null && !to.isEmpty())
-         || (subject != null && !subject.isEmpty())) {
+	    // childログインは固定
+	    if ("child".equals(loginType)) {
+	        subjectType = "child";
+	    } else {
+	        if (subjectType == null || subjectType.isBlank()) {
+	            subjectType = "adult";
+	        }
+	    }
+	    request.setAttribute("viewSubjectType", subjectType);
 
-            list = dao.findByCondition(userId, from, to, subject);
+	    // ===== 検索 =====
+	    String from = request.getParameter("from");
+	    String to = request.getParameter("to");
+	    String subject = request.getParameter("subject");
 
-            request.setAttribute("from", from);
-            request.setAttribute("to", to);
-            request.setAttribute("subject", subject);
+	    List<StudyLog> list;
+	    if ((from != null && !from.isEmpty())
+	     || (to != null && !to.isEmpty())
+	     || (subject != null && !subject.isEmpty())) {
 
-        } else {
-            list = dao.findByUser(userId);
-        }
+	        // ★検索でもtypeで絞る
+	        list = dao.findByConditionAndType(userId, subjectType, from, to, subject);
 
-        int totalToday = dao.sumByDate(userId, today);
+	        request.setAttribute("from", from);
+	        request.setAttribute("to", to);
+	        request.setAttribute("subject", subject);
+	    } else {
+	        // ★通常一覧もtypeで絞る
+	        list = dao.findByUserAndType(userId, subjectType);
+	    }
 
-        Map<String, Map<String,Integer>> subjectTotals = dao.sumBySubject(userId);
-        request.setAttribute("subjectTotals", subjectTotals);
+	    int totalToday = dao.sumByDate(userId, today);
 
-        request.setAttribute("logList", list);
-        request.setAttribute("totalToday", totalToday);
-        request.setAttribute("today", today);
-        request.setAttribute("loginUser", loginUser);
+	    String thisMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
-        RequestDispatcher dispatcher =
-                request.getRequestDispatcher("/WEB-INF/jsp/studylog.jsp");
-        dispatcher.forward(request, response);
-    }
+	    int weekTotal  = dao.sumWeek(userId, subjectType, today);
+	    int monthTotal = dao.sumMonth(userId, subjectType, thisMonth);
+	    int grandTotal = dao.sumTotal(userId, subjectType);
+
+	    request.setAttribute("weekTotal", weekTotal);
+	    request.setAttribute("monthTotal", monthTotal);
+	    request.setAttribute("grandTotal", grandTotal);
+
+	    Map<String, Map<String,Integer>> subjectTotals = dao.sumBySubject(userId);
+	    request.setAttribute("subjectTotals", subjectTotals);
+
+	    request.setAttribute("logList", list);
+	    request.setAttribute("totalToday", totalToday);
+	    request.setAttribute("today", today);
+	    request.setAttribute("loginUser", loginUser);
+
+	    RequestDispatcher dispatcher =
+	            request.getRequestDispatcher("/WEB-INF/jsp/studylog.jsp");
+	    dispatcher.forward(request, response);
+	}
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
