@@ -478,6 +478,60 @@ public class StudyLogDAO {
          return list;
          }
     
+ // ====== 追加：streak（継続日数）計算用 ======
+    public int calcStreakDays(String userId, String subjectType, String today) {
+
+        // study_date は yyyy-MM-dd の文字列想定
+        String sql =
+            "SELECT DISTINCT study_date " +
+            "FROM study_logs " +
+            "WHERE user_id=? AND subject_type=? AND study_date<=? " +
+            "ORDER BY study_date DESC";
+
+        List<String> dates = new ArrayList<>();
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.setString(2, subjectType);
+            ps.setString(3, today);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    dates.add(rs.getString("study_date"));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+
+        // Java側で連続チェック（todayからさかのぼる）
+        java.time.LocalDate cur = java.time.LocalDate.parse(today);
+        int streak = 0;
+
+        // datesは降順なので、Setにして存在チェックを早くする
+        java.util.HashSet<String> set = new java.util.HashSet<>(dates);
+
+        while (true) {
+            String key = cur.toString();
+            if (set.contains(key)) {
+                streak++;
+                cur = cur.minusDays(1);
+            } else {
+                break;
+            }
+        }
+        return streak;
+    }
+
+    // ====== 追加：今週/先週対決用（週合計は既存sumWeekを流用できるが、今日以外を渡しやすくするため） ======
+    public int sumWeekByDate(String userId, String subjectType, String baseDate) {
+        // 既存sumWeekがあるなら、それを呼ぶだけでもOK
+        return sumWeek(userId, subjectType, baseDate);
+    }
+    
     
     
 }

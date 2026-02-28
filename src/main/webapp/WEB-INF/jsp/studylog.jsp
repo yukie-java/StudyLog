@@ -58,6 +58,35 @@ if(viewType == null) viewType = "adult";
 <p>月合計：<%= request.getAttribute("monthTotal") %> 分</p>
 <p>累計：<%= request.getAttribute("grandTotal") %> 分</p>
 
+<% String viewType2 = (String)request.getAttribute("viewSubjectType"); %>
+
+<%-- child表示：ジム（8段階） --%>
+<% if ("child".equals(viewType2)) { %>
+
+  <h3>ジム進捗</h3>
+  <p>継続日数：<%= request.getAttribute("streakDays") %> 日</p>
+  <p>ジムレベル：<%= request.getAttribute("gymLevel") %> / 8</p>
+
+  <% if (((Integer)request.getAttribute("gymLevel")) < 8) { %>
+    <p>次のジムまで：あと
+      <%= request.getAttribute("nextGymNeedDays") %> 日 /
+      <%= request.getAttribute("nextGymNeedMinutes") %> 分
+    </p>
+  <% } else { %>
+    <p>全ジム制覇！🎉</p>
+  <% } %>
+
+<% } else { %>
+
+  <%-- adult表示：先週の自分と対決 --%>
+  <h3>先週の自分と対決</h3>
+  <p>今週：<%= request.getAttribute("weekTotal") %> 分</p>
+  <p>先週：<%= request.getAttribute("lastWeekTotal") %> 分</p>
+  <p>差分：<%= request.getAttribute("weekDiff") %> 分</p>
+  <p>結果：<%= request.getAttribute("duelResult") %></p>
+
+<% } %>
+
 
 <h3>ログ登録</h3>
 <form id="regForm" action="<%= request.getContextPath() %>/StudyLogServlet" method="post">

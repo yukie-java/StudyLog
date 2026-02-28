@@ -127,6 +127,51 @@ public class StudyLogServlet extends HttpServlet {
 	    request.setAttribute("today", today);
 	    request.setAttribute("loginUser", loginUser);
 
+	 // ===== child：streak + gym =====
+	    int streakDays = dao.calcStreakDays(userId, subjectType, today);
+	    request.setAttribute("streakDays", streakDays);
+
+	    int gymLevel = calcGymLevel(streakDays, grandTotal);
+	    request.setAttribute("gymLevel", gymLevel);
+
+	    int nextGymNeedDays = 0;
+	    int nextGymNeedMinutes = 0;
+
+	    if (gymLevel < 8) {
+	        int[] needDays =   {1, 2, 3, 5, 7, 10, 14, 21};
+	        int[] needMins =   {30, 60, 120, 240, 360, 600, 900, 1200};
+
+	        nextGymNeedDays = needDays[gymLevel] - streakDays;
+	        nextGymNeedMinutes = needMins[gymLevel] - grandTotal;
+
+	        if (nextGymNeedDays < 0) nextGymNeedDays = 0;
+	        if (nextGymNeedMinutes < 0) nextGymNeedMinutes = 0;
+	    }
+
+	    request.setAttribute("nextGymNeedDays", nextGymNeedDays);
+	    request.setAttribute("nextGymNeedMinutes", nextGymNeedMinutes);
+
+
+	    // ===== adult：先週の自分と対決 =====
+	    if ("adult".equals(subjectType)) {
+
+	        String lastWeekBase = LocalDate.now().minusDays(7).toString();
+	        int lastWeekTotal = dao.sumWeekByDate(userId, "adult", lastWeekBase);
+
+	        request.setAttribute("lastWeekTotal", lastWeekTotal);
+
+	        int diff = weekTotal - lastWeekTotal;
+	        request.setAttribute("weekDiff", diff);
+
+	        String duelResult;
+	        if (diff > 0) duelResult = "勝ち（先週の自分に勝った！）";
+	        else if (diff < 0) duelResult = "負け（先週の自分の方が強い…）";
+	        else duelResult = "引き分け（同点！）";
+
+	        request.setAttribute("duelResult", duelResult);
+	    }
+	    
+	    
 	    RequestDispatcher dispatcher =
 	            request.getRequestDispatcher("/WEB-INF/jsp/studylog.jsp");
 	    dispatcher.forward(request, response);
@@ -193,5 +238,21 @@ public class StudyLogServlet extends HttpServlet {
 
         // PRG
         response.sendRedirect(request.getContextPath() + "/StudyLogServlet");
+    }
+    private int calcGymLevel(int streakDays, int grandTotalMinutes) {
+
+        // Lv1〜8の条件
+        // 条件は「streak >= needDays[i] OR total >= needMins[i]」で判定してる
+        
+        int[] needDays = {1, 2, 3, 5, 7, 10, 14, 21};
+        int[] needMins = {30, 60, 120, 240, 360, 600, 900, 1200};
+
+        int level = 1;
+        for (int i = 0; i < 8; i++) {
+            boolean ok = (streakDays >= needDays[i]) || (grandTotalMinutes >= needMins[i]);
+            if (ok) level = i + 1;
+            else break;
+        }
+        return level; // 1〜8
     }
 }
