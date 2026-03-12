@@ -3,6 +3,7 @@ package servlet;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -114,6 +115,9 @@ public class StudyLogServlet extends HttpServlet {
 	    int weekTotal  = dao.sumWeek(userId, subjectType, today);
 	    int monthTotal = dao.sumMonth(userId, subjectType, thisMonth);
 	    int grandTotal = dao.sumTotal(userId, subjectType);
+	    
+	    LinkedHashMap<String, Integer> last7Days = dao.sumLast7Days(userId, subjectType, today);
+	    request.setAttribute("last7Days", last7Days);
 
 	    request.setAttribute("weekTotal", weekTotal);
 	    request.setAttribute("monthTotal", monthTotal);

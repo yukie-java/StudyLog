@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="java.util.LinkedHashMap" %>
 <%@ page import="model.StudyLog" %>
 
 <!DOCTYPE html>
@@ -19,6 +20,78 @@
   margin: 15px 0;
   border-radius: 6px;
 }
+
+.gym-grid{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.gym-card{
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  background: #f9f9f9;
+}
+
+.gym-card.cleared{
+  border: 2px solid #4caf50;
+  background: #f0fff0;
+}
+
+.gym-card.locked{
+  opacity: 0.7;
+  background: #f5f5f5;
+}
+
+.gym-number{
+  font-size: 12px;
+  color: #666;
+}
+
+.gym-name{
+  font-size: 18px;
+  font-weight: bold;
+  margin: 6px 0;
+}
+
+.gym-status{
+  font-size: 13px;
+}
+
+.duel-grid{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.duel-card{
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+  text-align: center;
+}
+
+.result-card{
+  border: 2px solid #2196f3;
+  background: #f0f8ff;
+}
+
+.duel-label{
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.duel-value{
+  font-size: 18px;
+  font-weight: bold;
+}
+
 </style>
 </head>
 
@@ -58,6 +131,9 @@ if(viewType == null) viewType = "adult";
 <p>月合計：<%= request.getAttribute("monthTotal") %> 分</p>
 <p>累計：<%= request.getAttribute("grandTotal") %> 分</p>
 
+<h3>直近7日の学習時間</h3>
+<canvas id ="studyChart" width="600" height="300"></canvas>
+
 <% String viewType2 = (String)request.getAttribute("viewSubjectType"); %>
 
 <%-- child表示：ジム（8段階） --%>
@@ -67,7 +143,25 @@ if(viewType == null) viewType = "adult";
   <p>継続日数：<%= request.getAttribute("streakDays") %> 日</p>
   <p>ジムレベル：<%= request.getAttribute("gymLevel") %> / 8</p>
 
-  <% if (((Integer)request.getAttribute("gymLevel")) < 8) { %>
+  <div class="gym-grid">
+    <%
+    int gymLevel = (Integer)request.getAttribute("gymLevel");
+    String[] gymNames = {"ほのお", "みず", "かぜ", "だいち", "ひかり", "やみ", "じくう", "むげん"};
+
+    for(int i = 0; i < gymNames.length; i++){
+      boolean cleared = (i + 1) <= gymLevel;
+    %>
+      <div class="gym-card <%= cleared ? "cleared" : "locked" %>">
+        <div class="gym-number">Gym <%= i + 1 %></div>
+        <div class="gym-name"><%= gymNames[i] %></div>
+        <div class="gym-status"><%= cleared ? "✅ CLEAR" : "🔒 LOCKED" %></div>
+      </div>
+    <%
+    }
+    %>
+  </div>
+
+  <% if (gymLevel < 8) { %>
     <p>次のジムまで：あと
       <%= request.getAttribute("nextGymNeedDays") %> 日 /
       <%= request.getAttribute("nextGymNeedMinutes") %> 分
@@ -79,14 +173,31 @@ if(viewType == null) viewType = "adult";
 <% } else { %>
 
   <%-- adult表示：先週の自分と対決 --%>
-  <h3>先週の自分と対決</h3>
-  <p>今週：<%= request.getAttribute("weekTotal") %> 分</p>
-  <p>先週：<%= request.getAttribute("lastWeekTotal") %> 分</p>
-  <p>差分：<%= request.getAttribute("weekDiff") %> 分</p>
-  <p>結果：<%= request.getAttribute("duelResult") %></p>
+    <h3>先週の自分と対決</h3>
+
+  <div class="duel-grid">
+    <div class="duel-card">
+      <div class="duel-label">今週</div>
+      <div class="duel-value"><%= request.getAttribute("weekTotal") %> 分</div>
+    </div>
+
+    <div class="duel-card">
+      <div class="duel-label">先週</div>
+      <div class="duel-value"><%= request.getAttribute("lastWeekTotal") %> 分</div>
+    </div>
+
+    <div class="duel-card">
+      <div class="duel-label">差分</div>
+      <div class="duel-value"><%= request.getAttribute("weekDiff") %> 分</div>
+    </div>
+
+    <div class="duel-card result-card">
+      <div class="duel-label">結果</div>
+      <div class="duel-value"><%= request.getAttribute("duelResult") %></div>
+    </div>
+  </div>
 
 <% } %>
-
 
 <h3>ログ登録</h3>
 <form id="regForm" action="<%= request.getContextPath() %>/StudyLogServlet" method="post">
@@ -203,6 +314,9 @@ if(subjects != null){
   <a href="<%= request.getContextPath() %>/StudyLogServlet">リセット</a>
 </form>
 
+<h3>科目別円グラフ</h3>
+<canvas id="subjectPieChart" width="500" height="300"></canvas>
+
 
 <h3>科目別合計</h3>
 
@@ -273,8 +387,69 @@ onclick="return confirm('削除しますか？');">削除</a>
 %>
 </table>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<%
+LinkedHashMap<String, Integer> last7Days =
+    (LinkedHashMap<String, Integer>)request.getAttribute("last7Days");
+
+StringBuilder labels = new StringBuilder();
+StringBuilder data = new StringBuilder();
+
+if (last7Days != null) {
+    boolean first = true;
+    for (Map.Entry<String, Integer> entry : last7Days.entrySet()) {
+        if (!first) {
+            labels.append(",");
+            data.append(",");
+        }
+        labels.append("'").append(entry.getKey()).append("'");
+        data.append(entry.getValue());
+        first = false;
+    }
+}
+
+// ===== 円グラフ用データ =====
+String pieLabels = "";
+String pieData = "";
+
+Map<String, Map<String,Integer>> totalsForPie =
+    (Map<String, Map<String,Integer>>)request.getAttribute("subjectTotals");
+
+Map<String,Integer> pieMap = null;
+if ("child".equals(viewType)) {
+    pieMap = (totalsForPie == null) ? null : totalsForPie.get("child");
+} else {
+    pieMap = (totalsForPie == null) ? null : totalsForPie.get("adult");
+}
+
+if (pieMap != null && !pieMap.isEmpty()) {
+
+    StringBuilder pieLb = new StringBuilder();
+    StringBuilder pieDt = new StringBuilder();
+
+    boolean firstPie = true;
+
+    for (Map.Entry<String, Integer> entry : pieMap.entrySet()) {
+
+        if (!firstPie) {
+            pieLb.append(",");
+            pieDt.append(",");
+        }
+
+        pieLb.append("'").append(entry.getKey()).append("'");
+        pieDt.append(entry.getValue());
+
+        firstPie = false;
+    }
+
+    pieLabels = pieLb.toString();
+    pieData = pieDt.toString();
+}
+%>
 
 <script>
+
 // ===== 検索フォーム =====
 function toggleOther(){
   const sel = document.getElementById("childSelect");
@@ -286,6 +461,7 @@ function toggleOther(){
 const searchForm = document.getElementById("searchForm");
 if (searchForm) {
   searchForm.addEventListener("submit", function () {
+
     let subject = "";
 
     const childSelect = document.getElementById("childSelect");
@@ -295,22 +471,27 @@ if (searchForm) {
     if (childSelect) {
       const val = childSelect.value;
       subject = (val === "other") ? (childOther ? childOther.value.trim() : "") : val;
-    } else if (adultInput) {
+    }
+    else if (adultInput) {
       subject = adultInput.value.trim();
     }
 
     const subjectHidden = document.getElementById("subjectHidden");
     if (subjectHidden) subjectHidden.value = subject;
+
   });
 }
 
 
 // ===== 登録フォーム =====
 function regChangeSubjectType(){
-  const typeEl = document.getElementById("regSubjectType");             // adultログイン時だけ
-  const hiddenTypeEl = document.getElementById("regSubjectTypeHidden"); // 常にある
 
-  const type = typeEl ? typeEl.value : (hiddenTypeEl ? hiddenTypeEl.value : "adult");
+  const typeEl = document.getElementById("regSubjectType");
+  const hiddenTypeEl = document.getElementById("regSubjectTypeHidden");
+
+  const type =
+        typeEl ? typeEl.value
+        : (hiddenTypeEl ? hiddenTypeEl.value : "adult");
 
   const childBox = document.getElementById("regChildSubjects");
   const adultBox = document.getElementById("regAdultSubjects");
@@ -318,35 +499,56 @@ function regChangeSubjectType(){
   if(childBox) childBox.style.display = (type === "child") ? "block" : "none";
   if(adultBox) adultBox.style.display = (type === "adult") ? "block" : "none";
 
-  // ★hiddenも追従させる（select変更したらサーバに送るtypeも変える）
   if(hiddenTypeEl) hiddenTypeEl.value = type;
 }
 
 function regToggleOther(){
+
   const sel = document.getElementById("regChildSelect");
   const other = document.getElementById("regChildOther");
+
   if(!sel || !other) return;
-  other.style.display = (sel.value === "other") ? "inline" : "none";
+
+  other.style.display =
+        (sel.value === "other") ? "inline" : "none";
 }
 
+
+// ===== 登録送信 =====
 const regForm = document.getElementById("regForm");
+
 if(regForm){
+
   regForm.addEventListener("submit", function(e){
+
     const typeEl = document.getElementById("regSubjectType");
     const hiddenTypeEl = document.getElementById("regSubjectTypeHidden");
 
-    let type = hiddenTypeEl ? hiddenTypeEl.value : "adult";
+    let type =
+      hiddenTypeEl ? hiddenTypeEl.value : "adult";
+
     if(typeEl) type = typeEl.value;
 
     let subject = "";
+
     if(type === "child"){
+
       const selectEl = document.getElementById("regChildSelect");
       const otherEl  = document.getElementById("regChildOther");
+
       const val = selectEl ? selectEl.value : "";
-      subject = (val === "other") ? (otherEl ? otherEl.value.trim() : "") : val;
-    }else{
+
+      subject =
+        (val === "other")
+        ? (otherEl ? otherEl.value.trim() : "")
+        : val;
+
+    }
+    else{
+
       const adultEl = document.getElementById("regAdultInput");
       subject = adultEl ? adultEl.value.trim() : "";
+
     }
 
     if(!subject){
@@ -355,16 +557,81 @@ if(regForm){
       return;
     }
 
-    const subjectHidden = document.getElementById("regSubjectHidden");
-    if(subjectHidden) subjectHidden.value = subject;
+    const subjectHidden =
+      document.getElementById("regSubjectHidden");
 
-    if(hiddenTypeEl) hiddenTypeEl.value = type;
+    if(subjectHidden)
+      subjectHidden.value = subject;
+
+    if(hiddenTypeEl)
+      hiddenTypeEl.value = type;
+
   });
+
 }
+
 
 // 初期表示
 regChangeSubjectType();
-</script>
 
+
+// ===== 棒グラフ（7日間） =====
+const chartCanvas = document.getElementById('studyChart');
+
+if (chartCanvas) {
+
+  const ctx = chartCanvas.getContext('2d');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: [<%= labels.toString() %>],
+      datasets: [{
+        label: '学習時間（分）',
+        data: [<%= data.toString() %>]
+      }]
+    },
+    options: {
+      responsive: false,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+}
+
+
+// ===== 円グラフ（科目別） =====
+const pieCanvas =
+      document.getElementById('subjectPieChart');
+
+if (pieCanvas) {
+
+  const pieCtx = pieCanvas.getContext('2d');
+
+  new Chart(pieCtx, {
+
+    type: 'pie',
+
+    data: {
+      labels: [<%= pieLabels %>],
+      datasets: [{
+        label: '科目別学習時間',
+        data: [<%= pieData %>]
+      }]
+    },
+
+    options: {
+      responsive: false
+    }
+
+  });
+
+}
+
+</script>
 </body>
 </html>

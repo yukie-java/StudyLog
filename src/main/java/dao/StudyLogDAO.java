@@ -268,6 +268,47 @@ public class StudyLogDAO {
         }
         return 0;
     }
+    
+    public LinkedHashMap<String, Integer> sumLast7Days(String userId, String subjectType, String today) {
+        LinkedHashMap<String, Integer> result = new LinkedHashMap<>();
+
+        java.time.LocalDate end = java.time.LocalDate.parse(today);
+        java.time.LocalDate start = end.minusDays(6);
+
+        // 先に7日分を0で埋める
+        java.time.LocalDate d = start;
+        while (!d.isAfter(end)) {
+            result.put(d.toString(), 0);
+            d = d.plusDays(1);
+        }
+
+        String sql =
+            "SELECT study_date, COALESCE(SUM(minutes),0) AS total " +
+            "FROM study_logs " +
+            "WHERE user_id=? AND subject_type=? " +
+            "AND study_date BETWEEN ? AND ? " +
+            "GROUP BY study_date " +
+            "ORDER BY study_date";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.setString(2, subjectType);
+            ps.setString(3, start.toString());
+            ps.setString(4, end.toString());
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                result.put(rs.getString("study_date"), rs.getInt("total"));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
 
     // 登録
     public void insert(StudyLog log) {
