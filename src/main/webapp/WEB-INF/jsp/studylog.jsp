@@ -61,6 +61,28 @@
   font-size: 13px;
 }
 
+.gym-image-wrap{
+  margin: 8px 0;
+}
+
+.gym-image{
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+  border-radius: 8px;
+}
+
+.gym-card.locked .gym-image{
+  filter: grayscale(100%) brightness(0.7);
+}
+
+.gym-message{
+  margin-top: 8px;
+  font-size: 12px;
+  color: #333;
+  line-height: 1.4;
+}
+
 .duel-grid{
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -146,23 +168,64 @@ if(viewType == null) viewType = "adult";
   <div class="gym-grid">
     <%
     int gymLevel = (Integer)request.getAttribute("gymLevel");
-    String[] gymNames = {"ほのお", "みず", "かぜ", "だいち", "ひかり", "やみ", "じくう", "むげん"};
+
+    String[] gymNames = {
+      "ほのお", "みず", "かぜ", "だいち",
+      "ひかり", "やみ", "じくう", "むげん"
+    };
+
+    String[] gymImages = {
+      "fire.png",
+      "water.png",
+      "wind.png",
+      "earth.png",
+      "light.png",
+      "dark.png",
+      "time.png",
+      "infinity.png"
+    };
+
+    String[] clearMessages = {
+      "その情熱、消えるな。",
+      "静かな強さを手に入れたね。",
+      "止まらない風になれ。",
+      "揺るがぬ土台ができた。",
+      "君はもう、光そのものだ。",
+      "闇を知る者は強い。",
+      "時間を味方にしたな。",
+      "成長に終わりはない。"
+    };
 
     for(int i = 0; i < gymNames.length; i++){
       boolean cleared = (i + 1) <= gymLevel;
     %>
+
       <div class="gym-card <%= cleared ? "cleared" : "locked" %>">
         <div class="gym-number">Gym <%= i + 1 %></div>
+
+        <div class="gym-image-wrap">
+          <img
+            src="<%= request.getContextPath() %>/img/gym/<%= gymImages[i] %>"
+            alt="<%= gymNames[i] %>ジムリーダー"
+            class="gym-image">
+        </div>
+
         <div class="gym-name"><%= gymNames[i] %></div>
-        <div class="gym-status"><%= cleared ? "✅ CLEAR" : "🔒 LOCKED" %></div>
+        <div class="gym-status"><%= cleared ? "☑ CLEAR" : "🔒 LOCKED" %></div>
+
+        <% if (cleared) { %>
+          <div class="gym-message"><%= clearMessages[i] %></div>
+        <% } %>
       </div>
+
     <%
     }
     %>
   </div>
 
   <% if (gymLevel < 8) { %>
-    <p>次のジムまで：あと
+    <p>
+      次のジムまで：あと
       <%= request.getAttribute("nextGymNeedDays") %> 日 /
       <%= request.getAttribute("nextGymNeedMinutes") %> 分
     </p>

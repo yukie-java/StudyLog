@@ -46,6 +46,7 @@ public class LoginServlet extends HttpServlet {
 
         UserDAO userDAO = new UserDAO();
         User user = userDAO.findByNameAndPassword(name, password);
+        
 
         if (user == null) {
             request.setAttribute("error", "ユーザー名またはパスワードが違います");

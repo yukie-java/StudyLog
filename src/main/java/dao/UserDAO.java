@@ -9,7 +9,7 @@ import java.sql.SQLException;
 import model.User;
 
 public class UserDAO {
-    // H2コンソールと同じに揃えるのがおすすめ
+    // H2コンソールと同じに揃える
     private static final String JDBC_URL =  "jdbc:h2:~/StudyLog;AUTO_SERVER=TRUE";
     private static final String DB_USER = "sa";
     private static final String DB_PASS = "";
